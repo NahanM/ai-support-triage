@@ -27,3 +27,15 @@ def test_erros_de_varios_campos_vem_juntos():
     resultado = validar_chamado({"titulo": "abc"})
 
     assert len(resultado.erros) == 4
+
+def test_chamado_valido_devolve_dados_limpos():
+    resultado = validar_chamado({
+        "titulo": "   Diário não salva presença   ",
+        "descricao": "Depois da atualização nenhum professor consegue salvar presença.",
+        "usuarios_afetados": 15,
+        "possui_workaround": False,
+    })
+
+    assert resultado.chamado.titulo == "Diário não salva presença"
+
+    
