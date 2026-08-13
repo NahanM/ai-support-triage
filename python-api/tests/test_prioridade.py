@@ -1,7 +1,7 @@
 import pytest
 
 from app.models.chamado import ChamadoEntrada
-from app.rules.prioridade import calcular_score, pontuar_usuarios_afetados
+from app.rules.prioridade import calcular_score, pontuar_usuarios_afetados, classificar_prioridade
 
 
 def montar_chamado(usuarios_afetados: int, possui_workaround: bool) -> ChamadoEntrada:
@@ -33,6 +33,19 @@ def test_sem_workaround_soma_dois_pontos():
 
     assert sem - com == 2
 
-
 def test_pior_caso_possivel():
     assert calcular_score(montar_chamado(500, False)) == 5
+
+@pytest.mark.parametrize(
+    "score, prioridade_esperada",
+    [
+        (1, "BAIXA"),
+        (3, "BAIXA"),
+        (4, "MEDIA"),
+        (6, "MEDIA"),
+        (7, "CRITICA"),
+        (10, "CRITICA"),
+    ],
+)
+def test_faixas_de_prioridade(score, prioridade_esperada):
+    assert classificar_prioridade(score) == prioridade_esperada
