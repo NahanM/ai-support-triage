@@ -20,3 +20,9 @@ class ResultadoValidacao(BaseModel):
     valido: bool
     erros: list[str] = []
     chamado: ChamadoEntrada | None = None
+
+class ResultadoPrioridade(BaseModel):
+    """Resposta da priorização, no formato que o n8n usa para rotear."""
+
+    score: int
+    prioridade: str 
