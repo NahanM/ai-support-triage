@@ -1,5 +1,5 @@
 from app.models.chamado import ChamadoEntrada
-from app.models.classificacao import Categoria, ClassificacaoIA
+from app.models.classificacao import Categoria, ClassificacaoIA, Tipo
 
 PONTOS_USUARIO_UNICO = 1
 PONTOS_POUCOS_USUARIOS = 2
@@ -19,6 +19,11 @@ CATEGORIAS_CRITICAS = {
     Categoria.MATRICULA,
     Categoria.ACESSO,
     Categoria.INFRAESTRUTURA,
+}
+
+TIPOS_QUE_PONTUAM_SISTEMA_CRITICO = {
+    Tipo.BUG,
+    Tipo.INCIDENTE,
 }
 
 def pontuar_usuarios_afetados(quantidade: int) -> int:
@@ -42,7 +47,7 @@ def calcular_score(
     if classificacao is None:
         return score
 
-    if classificacao.categoria in CATEGORIAS_CRITICAS:
+    if classificacao.categoria in CATEGORIAS_CRITICAS and classificacao.tipo in TIPOS_QUE_PONTUAM_SISTEMA_CRITICO:
         score += PONTOS_SISTEMA_CRITICO
 
     if classificacao.sistema_parado:
@@ -57,3 +62,4 @@ def classificar_prioridade(score: int) -> str:
     if score >= SCORE_MINIMO_MEDIA:
         return "MEDIA"
     return "BAIXA"
+

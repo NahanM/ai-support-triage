@@ -20,12 +20,12 @@ linguagem natural.
 
 | Camada | Tecnologia | Versão |
 |---|---|---|
-| Linguagem | Python | 3.14.2 |
-| Validação | Pydantic | 2.13.4 |
-| API | FastAPI + uvicorn | — |
-| Testes | pytest | 9.1.1 |
+| Linguagem | Python | 3.14.7 |
+| Validação | Pydantic | 2.14.4 |
+| API | FastAPI + uvicorn | 0.165.0 + 0.54.0 |
+| Testes | pytest | 9.2.0 |
 | Orquestração | n8n | pendente |
-| IA | Gemini (API gratuita) ou Ollama local | pendente |
+| IA | Gemini (API gratuita) | pendente |
 | Infra | Docker Compose | pendente |
 | Persistência | SQLite | pendente |
 
@@ -37,10 +37,12 @@ Ambiente: Windows, PowerShell, venv em `.venv/` na raiz.
 
 ```
 n8n (orquestrador)
- ├─→ POST /chamados/validar     → descarta chamados malformados
- ├─→ IA (classificação)          → interpreta o texto
- ├─→ POST /chamados/prioridade   → score e rótulo
- └─→ IF: CRITICA → escalar | resto → registrar
+ ├─→ recebe o chamado (webhook ou formulário)
+ ├─→ POST /chamados/validar      → inválido: responde ao usuário e para
+ ├─→ POST /chamados/classificar  → o Python chama o Gemini; se falhar, segue sem classificação
+ ├─→ POST /chamados/prioridade   → recebe chamado + classificação, valida de novo e pontua
+ ├─→ IF: CRITICA → escalar | resto → segue
+ └─→ POST /chamados              → o Python grava no SQLite
 ```
 
 Divisão de responsabilidades:
@@ -83,8 +85,21 @@ Só depende dos argumentos → `rules/`.**
 
 **Nomenclatura em português** em todo o código e API.
 
-**n8n chama a IA diretamente** (não o Python). Mantém o n8n como orquestrador
-real em vez de wrapper fino. Workflows exportados para `n8n/workflows/*.json`.
+**O n8n orquestra etapa por etapa; o Python é quem fala com a IA.** (Substitui
+"n8n chama a IA diretamente".) Cada etapa é uma rota separada, e o n8n decide o
+caminho: chamado inválido para, IA fora do ar segue sem bônus, CRITICA escala.
+A chave do Gemini, o tempo limite e a queda para o modo sem IA ficam no Python,
+testáveis no pytest. A `/chamados/prioridade` recebe a classificação vinda do
+n8n e valida de novo com `ClassificacaoIA`: o que passa pelo n8n não é confiável
+por padrão. O `services/triagem.py` junta as etapas para os testes e para uma
+rota `/chamados/triar` de atalho. Workflows exportados para `n8n/workflows/*.json`.
+
+**Bônus de sistema crítico só vale para `bug` e `incidente`.** Dúvida ou
+solicitação numa categoria crítica não é problema crítico ("esqueci minha senha"
+caía em MEDIA). Limite conhecido: o `tipo` vem da IA; se ela classificar a senha
+como `incidente`, o chamado sobe para MEDIA. O teste
+`test_limite_conhecido_senha_classificada_como_incidente` documenta isso. A
+defesa fica no prompt do Gemini.
 
 **Python é dono do SQLite.** O n8n não escreve no banco — chama um endpoint.
 Evita lock entre containers e mantém o schema versionado no código.
@@ -98,8 +113,8 @@ tipado, o FastAPI validaria antes e devolveria 422 em inglês — a função nun
 rodaria e o endpoint não teria propósito. A rota existe para o n8n descartar
 chamados ruins antes de gastar tempo de IA.
 
-**`/chamados/prioridade` recebe `ChamadoEntrada` tipado.** Pressupõe chamado já
-validado; quem chama fora de ordem recebe 422. Sem duplicar validação.
+**`/chamados/prioridade` recebe `ChamadoEntrada` tipado.** Muda na Fase 2:
+passa a receber chamado + classificação (opção C).
 
 **Validação devolve todos os erros de uma vez**, não só o primeiro.
 
@@ -120,13 +135,10 @@ Tratamento genérico vai num handler global do FastAPI, com log.
 | 2 a 9 usuários | +2 | campo do chamado |
 | 10+ usuários | +3 | campo do chamado |
 | Sem workaround | +2 | campo do chamado |
-| Sistema crítico | +3 | tabela categoria→crítico (pendente) |
-| Sistema totalmente parado | +2 | classificação da IA (pendente) |
+| Sistema crítico (só bug ou incidente) | +3 | categoria e tipo da IA |
+| Sistema totalmente parado | +2 | classificação da IA |
 
 Faixas: `>= 7` CRITICA · `>= 4` MEDIA · abaixo BAIXA. Máximo 10.
-
-Com só dois fatores implementados, o score máximo atual é 5 — CRITICA ainda
-não é alcançável na prática.
 
 ---
 
@@ -149,10 +161,10 @@ automática em `/docs`.
 
 ## Testes existentes
 
-26 testes, todos passando.
+39 testes, todos passando.
 
 ```powershell
-cd C:\Users\Public\n8n\ai-support-triage
+cd C:\Users\Natha\ai-support-triage-main
 .venv\Scripts\Activate.ps1
 cd python-api
 python -m pytest -v
@@ -168,45 +180,35 @@ Para subir o servidor: `python run.py` (o `run.py` existe porque
 
 ## Estado atual
 
-Núcleo Python determinístico completo e testado. Nenhuma integração externa
-ainda. Repositório em `github.com/<usuario>/ai-support-triage`, branch `main`.
+Núcleo determinístico, interface do classificador e ClassificadorFake prontos. Repositório em github.com/NahanM/ai-support-triage.
 
 ---
 
 ## Próximo passo
 
-Criar o `Classificador` com a implementação fake — o contrato que permite
-montar o fluxo completo de triagem sem IA rodando.
-
-Depois: `ClassificadorGemini` usando a API gratuita do Google AI Studio.
+Fase 2: `services/triagem.py` e as rotas `/chamados/classificar` (com o
+ClassificadorFake) e `/chamados/prioridade` recebendo chamado + classificação.
 
 ---
 
 ## Restrição de hardware
 
-Notebook de desenvolvimento tem **4 GB de RAM**. Não roda Ollama junto com
-Docker e n8n. Acesso a uma máquina melhor (do curso) é incerto.
+PC de desenvolvimento com **4 GB de RAM** (3,8 GB úteis). Docker roda via WSL2
+limitado a 1,5 GB em `C:\Users\Natha\.wslconfig`.
 
 Consequências:
 
-- Etapas 1 a 4 e o classificador: feitas no notebook, Python nativo, sem Docker
-- Etapas 5 a 12 (Docker, n8n, Ollama): dependem de outra máquina
-- Gemini via API gratuita é o caminho provável para a IA
-- Quando houver acesso à máquina boa: **gravar fixtures** com respostas reais
-  do modelo em `tests/fixtures/` e **gravar vídeo** do `docker compose up` para
-  o README
+- Ollama está fora: não cabe junto com Docker e n8n. A IA é o Gemini via API
+- Cabem a API e o n8n nos contêineres, cada um com limite de memória no compose
+- Fixtures com respostas reais do Gemini em `tests/fixtures/`
+- Vídeo do `docker compose up` para o README
 
 ---
 
 ## Pendências
 
-- `StarletteDeprecationWarning` sobre `httpx` → `httpx2`. Revisar ao fixar
-  versões no `requirements.txt`
-- Fixar versões com `pip freeze` quando o projeto estabilizar
 - Handler global de exceções no FastAPI, com logging
 - Pydantic aceita `"15"` (string) onde espera int e converte. Avaliar modo
   estrito quando o n8n estiver mandando dados reais
-- Definir a taxonomia fechada de categorias (a IA precisa de lista fechada)
-- Tabela categoria → sistema crítico
 - Configuração de fim de linha (CRLF/LF) ao entrar no Docker
 - README com a documentação do fallback de IA
