@@ -4,6 +4,10 @@ from app.models.chamado import ChamadoEntrada
 from app.models.classificacao import Categoria, ClassificacaoIA, Tipo
 
 
+class ClassificacaoIndisponivel(Exception):
+    """A IA não conseguiu classificar: fora do ar, demorou demais ou respondeu fora do formato."""
+
+
 class Classificador(Protocol):
     """Contrato de qualquer classificador, seja fake, Gemini ou Ollama."""
 

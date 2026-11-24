@@ -64,15 +64,23 @@ ai-support-triage/
     ├── pytest.ini              (pythonpath = . , testpaths = tests)
     ├── requirements.txt
     ├── run.py                  (sobe o uvicorn)
+    ├── rastrear.py             (mostra uma triagem passo a passo)
     ├── app/
     │   ├── main.py             (FastAPI + rotas)
-    │   ├── models/chamado.py   (contratos Pydantic)
+    │   ├── models/
+    │   │   ├── chamado.py      (contratos Pydantic)
+    │   │   └── classificacao.py (Enums e ClassificacaoIA)
     │   ├── rules/prioridade.py (funções puras de score)
-    │   └── services/validacao.py
+    │   └── services/
+    │       ├── validacao.py
+    │       ├── classificador.py (interface, Fake e ClassificacaoIndisponivel)
+    │       └── triagem.py      (valida, classifica e pontua)
     └── tests/
         ├── test_api.py
         ├── test_chamado.py
+        ├── test_classificacao.py
         ├── test_prioridade.py
+        ├── test_triagem.py
         └── test_validacao.py
 ```
 
@@ -161,7 +169,7 @@ automática em `/docs`.
 
 ## Testes existentes
 
-39 testes, todos passando.
+50 testes, todos passando
 
 ```powershell
 cd C:\Users\Natha\ai-support-triage-main
@@ -186,8 +194,7 @@ Núcleo determinístico, interface do classificador e ClassificadorFake prontos.
 
 ## Próximo passo
 
-Fase 2: `services/triagem.py` e as rotas `/chamados/classificar` (com o
-ClassificadorFake) e `/chamados/prioridade` recebendo chamado + classificação.
+Fase 3: ClassificadorGemini
 
 ---
 
@@ -212,3 +219,4 @@ Consequências:
   estrito quando o n8n estiver mandando dados reais
 - Configuração de fim de linha (CRLF/LF) ao entrar no Docker
 - README com a documentação do fallback de IA
+- IA fora do ar faz o score errar pra baixo (crítico vira MEDIA). Na Fase 6, o n8n manda chamados com `classificacao` vazia para revisão humana
