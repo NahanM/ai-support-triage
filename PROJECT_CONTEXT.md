@@ -25,7 +25,7 @@ linguagem natural.
 | API | FastAPI + uvicorn | 0.165.0 + 0.54.0 |
 | Testes | pytest | 9.2.0 |
 | Orquestração | n8n | pendente |
-| IA | Gemini (API gratuita) | pendente |
+| IA | Gemini (gemini-3.5-flash-lite, plano gratuito) | ativo |
 | Infra | Docker Compose | pendente |
 | Persistência | SQLite | pendente |
 
@@ -133,6 +133,10 @@ Tratamento genérico vai num handler global do FastAPI, com log.
 **Classificador atrás de uma interface** (`ClassificadorFake` / `Gemini` /
 `Ollama`). Permite testes sem rede e troca de provedor por configuração.
 
+**Prompt medido, não chutado.** `avaliar_prompt.py` roda 12 chamados com
+gabarito no Gemini. O guia foi ajustado até 12/12 em 3 rodadas seguidas
+(temperatura 0). A IA não sabe dos pontos: só classifica.
+
 ---
 
 ## Regras de prioridade
@@ -220,3 +224,5 @@ Consequências:
 - Configuração de fim de linha (CRLF/LF) ao entrar no Docker
 - README com a documentação do fallback de IA
 - IA fora do ar faz o score errar pra baixo (crítico vira MEDIA). Na Fase 6, o n8n manda chamados com `classificacao` vazia para revisão humana
+- Plano gratuito: o Google pode usar os dados enviados; usar só chamados inventados
+- Dados sintéticos para ampliar a prova, com revisão humana do gabarito
