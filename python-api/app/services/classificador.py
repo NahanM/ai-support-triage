@@ -27,3 +27,10 @@ class ClassificadorFake:
 
     def classificar(self, chamado: ChamadoEntrada) -> ClassificacaoIA:
         return self.classificacao
+    
+    
+class ClassificadorDesligado:
+    """Usado quando não há chave de IA: sempre indisponível, e a triagem segue sem classificação."""
+
+    def classificar(self, chamado: ChamadoEntrada) -> ClassificacaoIA:
+        raise ClassificacaoIndisponivel("nenhuma chave de IA configurada")

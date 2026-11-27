@@ -1,14 +1,14 @@
 """Mostra uma triagem passo a passo. Rodar de dentro de python-api: python rastrear.py"""
 
 from app.rules.prioridade import calcular_score, classificar_prioridade
-from app.services.classificador import ClassificadorFake
+from app.main import obter_classificador
 from app.services.triagem import classificar_sem_derrubar
 from app.services.validacao import validar_chamado
 
 CHAMADO = {
-    "titulo": "Diário não salva presença",
-    "descricao": "Depois da atualização nenhum professor consegue salvar presença.",
-    "usuarios_afetados": 15,
+    "titulo": "Não funciona",
+    "descricao": "O sistema não abre no meu computador. Minhas colegas estão usando normal.",
+    "usuarios_afetados": 1,
     "possui_workaround": False,
 }
 
@@ -24,7 +24,7 @@ def main():
             print(f"   - {erro}")
         return
 
-    classificacao = classificar_sem_derrubar(validacao.chamado, ClassificadorFake())
+    classificacao = classificar_sem_derrubar(validacao.chamado, obter_classificador())
     print(f"\n3. Classificação da IA: {classificacao}")
 
     score = calcular_score(validacao.chamado, classificacao)

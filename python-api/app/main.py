@@ -1,3 +1,11 @@
+import os
+from functools import lru_cache
+
+from dotenv import load_dotenv
+
+from app.services.classificador import Classificador, ClassificadorDesligado
+from app.services.classificador_gemini import MODELO_PADRAO, ClassificadorGemini
+
 from fastapi import Depends, FastAPI
 
 from app.models.chamado import (
@@ -9,9 +17,10 @@ from app.models.chamado import (
 )
 from app.models.classificacao import ClassificacaoIA
 from app.rules.prioridade import calcular_score, classificar_prioridade
-from app.services.classificador import Classificador, ClassificadorFake
 from app.services.triagem import classificar_sem_derrubar, triar
 from app.services.validacao import validar_chamado
+
+load_dotenv()
 
 app = FastAPI(
     title="AI Support Triage",
@@ -19,9 +28,14 @@ app = FastAPI(
 )
 
 
+@lru_cache
 def obter_classificador() -> Classificador:
-    """Qual classificador a API usa. Na Fase 3 passa a ser o Gemini."""
-    return ClassificadorFake()
+    """Gemini se houver chave no .env; senão, IA desligada (score só com o chamado)."""
+    chave = os.getenv("GEMINI_API_KEY")
+    if not chave:
+        return ClassificadorDesligado()
+    modelo = os.getenv("GEMINI_MODELO", MODELO_PADRAO)
+    return ClassificadorGemini(api_key=chave, modelo=modelo)
 
 
 @app.post("/chamados/validar", response_model=ResultadoValidacao)
